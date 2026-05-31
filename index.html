@@ -1,256 +1,191 @@
-# =============================================================
-#  House Price Prediction  |  SyntecxHub  |  Project 1
-#  Complete source code — Linear Regression pipeline
-#  Dataset: California Housing (built into scikit-learn)
-# =============================================================
+# ============================================================
+#  SyntecxHub — Project 01: House Price Prediction
+#  Linear Regression · California Housing Dataset
+# ============================================================
 
-# ── 0. INSTALL (run once in terminal) ─────────────────────────
-# pip install pandas numpy matplotlib seaborn scikit-learn joblib
-
-# ── 1. IMPORTS ────────────────────────────────────────────────
-import pandas as pd
+# ── 1. Imports ───────────────────────────────────────────────
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import joblib
 
 from sklearn.datasets import fetch_california_housing
 from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score
 
-import joblib
-import warnings
-warnings.filterwarnings("ignore")
+# ── 2. Load Dataset ──────────────────────────────────────────
+print("=" * 55)
+print("  SyntecxHub | Project 01 — House Price Prediction")
+print("=" * 55)
 
-# ── 2. LOAD DATASET ───────────────────────────────────────────
-print("=" * 50)
-print("  STEP 1: Loading Dataset & EDA")
-print("=" * 50)
+data = fetch_california_housing(as_frame=True)
+df = data.frame.copy()
 
-housing = fetch_california_housing(as_frame=True)
-df = housing.frame
+# Use a reproducible 2000-row sample
+df = df.sample(n=2000, random_state=42).reset_index(drop=True)
 
-print(f"\nDataset shape : {df.shape}")
-print(f"Features      : {list(df.columns[:-1])}")
-print(f"Target        : MedHouseVal (median house value in $100k)\n")
+# Target column is MedHouseVal (in $100k units) → convert to dollars
+df["Price"] = df["MedHouseVal"] * 100_000
+df.drop(columns=["MedHouseVal"], inplace=True)
 
-print("First 5 rows:")
-print(df.head(), "\n")
+print(f"\n[STEP 1] Dataset loaded")
+print(f"  Shape      : {df.shape}")
+print(f"  Features   : {list(df.columns[:-1])}")
+print(f"  Target     : Price (USD)")
 
-print("Basic statistics:")
-print(df.describe().round(2), "\n")
+# ── 3. Explore & Clean ───────────────────────────────────────
+print(f"\n[STEP 2] Exploration & Cleaning")
+print(f"  Missing values : {df.isnull().sum().sum()}")
+print(f"  Avg price      : ${df['Price'].mean():,.0f}")
+print(f"  Min price      : ${df['Price'].min():,.0f}")
+print(f"  Max price      : ${df['Price'].max():,.0f}")
+print(df.describe().round(2).to_string())
 
-print("Missing values:")
-print(df.isnull().sum())
-
-# ── 3. EXPLORATORY DATA ANALYSIS ─────────────────────────────
-print("\nGenerating EDA plots...")
-
-# Feature distributions
-df.hist(bins=30, figsize=(14, 10), color="steelblue", edgecolor="white")
-plt.suptitle("Feature Distributions", fontsize=14, fontweight="bold")
-plt.tight_layout()
-plt.savefig("eda_distributions.png", dpi=100)
-plt.show()
-print("  Saved: eda_distributions.png")
-
-# Correlation heatmap
-plt.figure(figsize=(10, 7))
-sns.heatmap(
-    df.corr(), annot=True, fmt=".2f", cmap="coolwarm",
-    square=True, linewidths=0.5, annot_kws={"size": 9}
-)
-plt.title("Feature Correlation Matrix", fontsize=13, fontweight="bold")
-plt.tight_layout()
-plt.savefig("eda_correlation.png", dpi=100)
-plt.show()
-print("  Saved: eda_correlation.png")
-
-# Target distribution
-plt.figure(figsize=(8, 4))
-sns.histplot(df["MedHouseVal"], bins=50, kde=True, color="steelblue")
-plt.xlabel("Median House Value ($100k)")
-plt.ylabel("Count")
-plt.title("Target Variable Distribution", fontsize=13, fontweight="bold")
-plt.tight_layout()
-plt.savefig("eda_target.png", dpi=100)
-plt.show()
-print("  Saved: eda_target.png")
-
-# ── 4. FEATURE SELECTION & SPLIT ─────────────────────────────
-print("\n" + "=" * 50)
-print("  STEP 2: Feature Selection & Train/Test Split")
-print("=" * 50)
-
-FEATURES = [
-    "MedInc",      # Median income in block group
-    "HouseAge",    # Median house age in block group
-    "AveRooms",    # Average number of rooms per household
-    "AveBedrms",   # Average number of bedrooms per household
-    "Population",  # Block group population
-    "AveOccup",    # Average number of household members
-    "Latitude",    # Block group latitude
-    "Longitude",   # Block group longitude
-]
-TARGET = "MedHouseVal"
+# ── 4. Feature & Target Split ────────────────────────────────
+FEATURES = ["MedInc", "HouseAge", "AveRooms", "AveBedrms",
+            "Population", "AveOccup", "Latitude", "Longitude"]
+TARGET   = "Price"
 
 X = df[FEATURES]
 y = df[TARGET]
 
-print(f"\nSelected {len(FEATURES)} features: {FEATURES}")
-
+# ── 5. Train / Test Split ────────────────────────────────────
 X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42
+    X, y, test_size=0.20, random_state=42
 )
+print(f"\n[STEP 3] Train/Test split (80/20)")
+print(f"  Training rows : {X_train.shape[0]}")
+print(f"  Testing rows  : {X_test.shape[0]}")
 
-print(f"\nTrain samples : {X_train.shape[0]}")
-print(f"Test  samples : {X_test.shape[0]}")
-
-# Scale features
+# ── 6. Scale Features ────────────────────────────────────────
 scaler = StandardScaler()
 X_train_scaled = scaler.fit_transform(X_train)
 X_test_scaled  = scaler.transform(X_test)
 
-print("\nFeatures standardised with StandardScaler.")
+print(f"\n[STEP 4] StandardScaler applied")
+print(f"  Means : {dict(zip(FEATURES, scaler.mean_.round(3)))}")
+print(f"  Stds  : {dict(zip(FEATURES, scaler.scale_.round(3)))}")
 
-# ── 5. MODEL TRAINING ────────────────────────────────────────
-print("\n" + "=" * 50)
-print("  STEP 3: Training Linear Regression Model")
-print("=" * 50)
-
+# ── 7. Train Model ───────────────────────────────────────────
 model = LinearRegression()
 model.fit(X_train_scaled, y_train)
 
-print("\nModel trained successfully.")
-print(f"Intercept : {model.intercept_:.4f}")
-
+print(f"\n[STEP 5] Linear Regression trained")
+print(f"  Intercept : ${model.intercept_:,.2f}")
 coef_df = pd.DataFrame({
-    "Feature"    : FEATURES,
-    "Coefficient": model.coef_
-}).sort_values("Coefficient", ascending=False).reset_index(drop=True)
-
-print("\nFeature Coefficients:")
+    "Feature":     FEATURES,
+    "Coefficient": model.coef_.round(2)
+}).sort_values("Coefficient", key=abs, ascending=False)
 print(coef_df.to_string(index=False))
 
-# Coefficient bar chart
-plt.figure(figsize=(8, 5))
-colors = ["steelblue" if c > 0 else "tomato" for c in coef_df["Coefficient"]]
-plt.barh(coef_df["Feature"], coef_df["Coefficient"], color=colors, edgecolor="white")
-plt.axvline(0, color="black", linewidth=0.9, linestyle="--")
-plt.xlabel("Coefficient value")
-plt.title("Feature Coefficients — Linear Regression", fontsize=13, fontweight="bold")
-plt.tight_layout()
-plt.savefig("model_coefficients.png", dpi=100)
-plt.show()
-print("\n  Saved: model_coefficients.png")
-
-# ── 6. EVALUATION ────────────────────────────────────────────
-print("\n" + "=" * 50)
-print("  STEP 4: Model Evaluation")
-print("=" * 50)
-
+# ── 8. Evaluate ──────────────────────────────────────────────
 y_pred = model.predict(X_test_scaled)
 
 rmse = np.sqrt(mean_squared_error(y_test, y_pred))
-mae  = np.mean(np.abs(y_test - y_pred))
 r2   = r2_score(y_test, y_pred)
+mae  = np.mean(np.abs(y_test.values - y_pred))
 
-print(f"""
-  ┌──────────────────────────────────┐
-  │        Evaluation Metrics        │
-  ├──────────────────────────────────┤
-  │  RMSE  :  {rmse:.4f}  ($100k)      │
-  │  MAE   :  {mae:.4f}  ($100k)      │
-  │  R²    :  {r2:.4f}               │
-  └──────────────────────────────────┘
-""")
+print(f"\n[STEP 6] Model Evaluation")
+print(f"  R²   : {r2:.4f}")
+print(f"  RMSE : ${rmse:,.2f}")
+print(f"  MAE  : ${mae:,.2f}")
 
-# Actual vs Predicted
-plt.figure(figsize=(7, 5))
-plt.scatter(y_test, y_pred, alpha=0.25, s=10, color="steelblue")
-mn, mx = y_test.min(), y_test.max()
-plt.plot([mn, mx], [mn, mx], "r--", linewidth=1.5, label="Perfect prediction")
-plt.xlabel("Actual price ($100k)")
-plt.ylabel("Predicted price ($100k)")
-plt.title(f"Actual vs Predicted  |  R² = {r2:.3f}", fontsize=13, fontweight="bold")
-plt.legend()
-plt.tight_layout()
-plt.savefig("eval_actual_vs_predicted.png", dpi=100)
-plt.show()
-print("  Saved: eval_actual_vs_predicted.png")
+# ── 9. Example Predictions ───────────────────────────────────
+print(f"\n[STEP 7] Example predictions (first 5 test samples)")
+results = pd.DataFrame({
+    "Actual":    y_test.values[:5].round(0),
+    "Predicted": y_pred[:5].round(0),
+    "Error":     (y_pred[:5] - y_test.values[:5]).round(0)
+})
+print(results.to_string(index=False))
 
-# Residuals plot
-residuals = y_test - y_pred
-plt.figure(figsize=(7, 4))
-plt.scatter(y_pred, residuals, alpha=0.25, s=10, color="steelblue")
-plt.axhline(0, color="red", linewidth=1.2, linestyle="--")
-plt.xlabel("Predicted price ($100k)")
-plt.ylabel("Residual")
-plt.title("Residual Plot", fontsize=13, fontweight="bold")
-plt.tight_layout()
-plt.savefig("eval_residuals.png", dpi=100)
-plt.show()
-print("  Saved: eval_residuals.png")
+# ── 10. Save Model & Scaler ──────────────────────────────────
+joblib.dump(model,  "linear_regression_model.pkl")
+joblib.dump(scaler, "standard_scaler.pkl")
+print(f"\n[STEP 8] Saved model → linear_regression_model.pkl")
+print(f"         Saved scaler → standard_scaler.pkl")
 
-# Residuals distribution
-plt.figure(figsize=(7, 4))
-sns.histplot(residuals, bins=50, kde=True, color="steelblue")
-plt.axvline(0, color="red", linewidth=1.2, linestyle="--")
-plt.xlabel("Residual")
-plt.title("Residual Distribution", fontsize=13, fontweight="bold")
-plt.tight_layout()
-plt.savefig("eval_residual_dist.png", dpi=100)
-plt.show()
-print("  Saved: eval_residual_dist.png")
+# ── 11. Custom Prediction Function ──────────────────────────
+def predict_price(MedInc=5.5, HouseAge=25, AveRooms=5.4,
+                  AveBedrms=1.1, Population=900, AveOccup=2.6,
+                  Latitude=37.2, Longitude=-119.1):
+    """
+    Predict house price from raw feature values.
 
-# ── 7. SAVE MODEL & SCALER ────────────────────────────────────
-print("\n" + "=" * 50)
-print("  STEP 5: Save Model & Example Predictions")
-print("=" * 50)
+    Parameters
+    ----------
+    MedInc     : Median income in block group ($10k units)
+    HouseAge   : Median house age (years)
+    AveRooms   : Average number of rooms per household
+    AveBedrms  : Average number of bedrooms per household
+    Population : Block group population
+    AveOccup   : Average household occupancy
+    Latitude   : Block group latitude
+    Longitude  : Block group longitude
 
-joblib.dump(model,  "house_price_model.pkl")
-joblib.dump(scaler, "house_price_scaler.pkl")
-print("\nSaved: house_price_model.pkl")
-print("Saved: house_price_scaler.pkl")
+    Returns
+    -------
+    float : Estimated house price in USD
+    """
+    features = np.array([[MedInc, HouseAge, AveRooms, AveBedrms,
+                          Population, AveOccup, Latitude, Longitude]])
+    scaled   = scaler.transform(features)
+    price    = model.predict(scaled)[0]
+    price    = float(np.clip(price, 50_000, 900_000))
+    return price
 
-# ── 8. RELOAD & PREDICT ──────────────────────────────────────
-loaded_model  = joblib.load("house_price_model.pkl")
-loaded_scaler = joblib.load("house_price_scaler.pkl")
 
-print("\nModel reloaded successfully.")
+# ── 12. Plots ────────────────────────────────────────────────
+def plot_results():
+    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+    fig.suptitle("SyntecxHub — Project 01: House Price Prediction",
+                 fontsize=14, fontweight="bold")
 
-# Sample homes: [MedInc, HouseAge, AveRooms, AveBedrms,
-#                Population, AveOccup, Latitude, Longitude]
-sample_homes = pd.DataFrame({
-    "MedInc"    : [8.3252, 3.5,   6.0,   2.0],
-    "HouseAge"  : [41.0,   20.0,  10.0,  35.0],
-    "AveRooms"  : [6.98,   5.0,   4.5,   3.8],
-    "AveBedrms" : [1.02,   1.1,   1.0,   1.05],
-    "Population": [322.0,  800.0, 1200.0, 600.0],
-    "AveOccup"  : [2.55,   3.0,   2.8,   2.6],
-    "Latitude"  : [37.88,  34.0,  33.5,  36.5],
-    "Longitude" : [-122.23,-118.0,-117.5,-119.8],
-}, columns=FEATURES)
+    # (a) Predicted vs Actual
+    ax = axes[0]
+    ax.scatter(y_test, y_pred, alpha=0.45, color="#6C63FF", s=20)
+    lims = [min(y_test.min(), y_pred.min()),
+            max(y_test.max(), y_pred.max())]
+    ax.plot(lims, lims, "r--", linewidth=1.2, label="Perfect fit")
+    ax.set_xlabel("Actual Price ($)")
+    ax.set_ylabel("Predicted Price ($)")
+    ax.set_title("Predicted vs Actual")
+    ax.legend(fontsize=9)
 
-scaled_input = loaded_scaler.transform(sample_homes)
-predictions  = loaded_model.predict(scaled_input)
+    # (b) Residuals distribution
+    ax = axes[1]
+    residuals = y_pred - y_test.values
+    ax.hist(residuals / 1000, bins=30, color="#FF6B9D", edgecolor="white",
+            linewidth=0.4)
+    ax.axvline(0, color="black", linewidth=1.2, linestyle="--")
+    ax.set_xlabel("Residual ($k)")
+    ax.set_ylabel("Count")
+    ax.set_title("Residual Distribution")
 
-print("\n  Example Predictions:")
-print("  " + "-" * 40)
-for i, pred in enumerate(predictions):
-    print(f"  Home {i+1}: Predicted price = ${pred * 100_000:>12,.0f}")
-print("  " + "-" * 40)
+    # (c) Feature coefficients
+    ax = axes[2]
+    colors = ["#00D4AA" if c > 0 else "#FF6B9D" for c in coef_df["Coefficient"]]
+    ax.barh(coef_df["Feature"], coef_df["Coefficient"] / 1000, color=colors)
+    ax.axvline(0, color="black", linewidth=0.8)
+    ax.set_xlabel("Coefficient ($k, scaled)")
+    ax.set_title("Feature Coefficients")
 
-print("\n" + "=" * 50)
-print("  Project complete! Files generated:")
-print("  ├── house_price_model.pkl")
-print("  ├── house_price_scaler.pkl")
-print("  ├── eda_distributions.png")
-print("  ├── eda_correlation.png")
-print("  ├── eda_target.png")
-print("  ├── model_coefficients.png")
-print("  ├── eval_actual_vs_predicted.png")
-print("  ├── eval_residuals.png")
-print("  └── eval_residual_dist.png")
-print("=" * 50)
+    plt.tight_layout()
+    plt.savefig("house_price_prediction_plots.png", dpi=150)
+    plt.show()
+    print("\n[PLOTS] Saved → house_price_prediction_plots.png")
+
+
+plot_results()
+
+# ── 13. Demo custom prediction ───────────────────────────────
+print("\n[DEMO] Custom prediction example:")
+price = predict_price(MedInc=7.5, HouseAge=15, AveRooms=6.0,
+                      AveBedrms=1.0, Population=800, AveOccup=2.4,
+                      Latitude=37.8, Longitude=-122.4)
+print(f"  Estimated price: ${price:,.0f}")
+
+print("\n✓ Project complete.\n")
