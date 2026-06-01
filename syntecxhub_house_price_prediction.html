@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>House Price Prediction — SyntecxHub Project 1</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0d14;
+    --surface: #13131f;
+    --surface2: #1a1a2e;
+    --border: rgba(255,255,255,0.07);
+    --accent: #6c63ff;
+    --accent2: #ff6b9d;
+    --accent3: #00d4aa;
+    --text: #e8e8f0;
+    --muted: #7070a0;
+    --mono: 'Space Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 0;
+    overflow-x: hidden;
+  }
+
+  /* Animated background blobs */
+  .bg-blobs {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+  }
+  .blob {
+    position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.12;
+    animation: drift 18s ease-in-out infinite alternate;
+  }
+  .blob1 { width: 500px; height: 500px; background: var(--accent); top: -100px; left: -100px; animation-duration: 20s; }
+  .blob2 { width: 400px; height: 400px; background: var(--accent2); bottom: -80px; right: -80px; animation-duration: 25s; animation-delay: -8s; }
+  .blob3 { width: 300px; height: 300px; background: var(--accent3); top: 40%; left: 50%; animation-duration: 22s; animation-delay: -4s; }
+  @keyframes drift {
+    from { transform: translate(0,0) scale(1); }
+    to { transform: translate(40px, 30px) scale(1.08); }
+  }
+
+  .page { position: relative; z-index: 1; max-width: 1060px; margin: 0 auto; padding: 2.5rem 2rem 4rem; }
+
+  /* Header */
+  .header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    margin-bottom: 3rem; padding-bottom: 2rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .brand {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 1.25rem;
+  }
+  .brand-logo {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: 14px; font-weight: 700; color: #fff;
+  }
+  .brand-name { font-size: 13px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  .brand-tagline { font-size: 10px; color: #4a4a70; letter-spacing: 0.08em; }
+
+  h1 { font-size: 36px; font-weight: 800; line-height: 1.1; margin-bottom: 6px; }
+  h1 span { background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .subtitle { font-size: 12px; color: var(--muted); font-family: var(--mono); letter-spacing: 0.04em; }
+
+  .header-badge {
+    display: flex; flex-direction: column; align-items: flex-end; gap: 8px; padding-top: 4px;
+  }
+  .badge {
+    font-family: var(--mono); font-size: 10px; padding: 5px 12px;
+    border-radius: 20px; border: 1px solid; letter-spacing: 0.06em;
+  }
+  .badge-green { border-color: var(--accent3); color: var(--accent3); background: rgba(0,212,170,0.08); }
+  .badge-purple { border-color: var(--accent); color: var(--accent); background: rgba(108,99,255,0.08); }
+  .badge-pink { border-color: var(--accent2); color: var(--accent2); background: rgba(255,107,157,0.08); }
+
+  /* Metric grid */
+  .metric-grid {
+    display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-bottom: 2.5rem;
+  }
+  .metric-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1rem 0.9rem;
+    position: relative; overflow: hidden;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .metric-card:hover { border-color: rgba(108,99,255,0.3); transform: translateY(-2px); }
+  .metric-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .metric-card:hover::before { opacity: 1; }
+  .metric-label { font-size: 10px; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 6px; font-family: var(--mono); }
+  .metric-value { font-size: 24px; font-weight: 700; line-height: 1; margin-bottom: 4px; }
+  .metric-sub { font-size: 10px; color: #4a4a70; font-family: var(--mono); }
+  .val-green { color: var(--accent3); }
+  .val-white { color: var(--text); }
+
+  /* Section label */
+  .section-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 0.75rem; font-family: var(--mono);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.5rem;
+  }
+
+  /* Scatter + Residual row */
+  .two-col { display: grid; grid-template-columns: 1.5fr 1fr; gap: 1.25rem; margin-bottom: 2rem; }
+
+  /* Coefficients */
+  .coef-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .coef-row:last-child { border-bottom: none; }
+  .coef-name { font-family: var(--mono); font-size: 12px; color: var(--text); width: 82px; flex-shrink: 0; }
+  .coef-bar-wrap { flex: 1; height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden; }
+  .coef-bar { height: 100%; border-radius: 3px; transition: width 0.8s cubic-bezier(.4,0,.2,1); }
+  .coef-val { font-family: var(--mono); font-size: 11px; color: var(--muted); width: 100px; text-align: right; flex-shrink: 0; }
+
+  /* Example + Coefficients row */
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.25rem; margin-bottom: 2rem; }
+
+  /* Feature table */
+  .feat-tbl { width: 100%; border-collapse: collapse; }
+  .feat-tbl td { padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+  .feat-tbl tr:last-child td { border-bottom: none; }
+  .feat-tbl td:first-child { color: var(--muted); font-family: var(--mono); }
+  .feat-tbl td:last-child { text-align: right; font-weight: 600; font-family: var(--mono); }
+
+  /* Stat trio */
+  .stat-trio { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 1.25rem; }
+  .stat-box { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 0.85rem; text-align: center; }
+  .stat-box-label { font-size: 10px; color: var(--muted); font-family: var(--mono); letter-spacing: 0.06em; margin-bottom: 5px; }
+  .stat-box-val { font-size: 18px; font-weight: 700; font-family: var(--mono); }
+
+  /* Prediction panel */
+  .pred-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .pred-field { display: flex; flex-direction: column; gap: 5px; }
+  .pred-field label { font-size: 11px; color: var(--muted); font-family: var(--mono); letter-spacing: 0.05em; }
+  .pred-field input {
+    padding: 8px 12px; font-size: 13px; font-family: var(--mono);
+    border: 1px solid var(--border); border-radius: 8px;
+    background: var(--surface2); color: var(--text); outline: none;
+    transition: border-color 0.2s;
+  }
+  .pred-field input:focus { border-color: var(--accent); }
+
+  .run-btn {
+    margin-top: 1.25rem; width: 100%; padding: 12px;
+    font-family: var(--sans); font-size: 14px; font-weight: 700; letter-spacing: 0.06em;
+    cursor: pointer; border: 1px solid var(--accent);
+    border-radius: 10px; background: rgba(108,99,255,0.12); color: var(--accent);
+    transition: background 0.2s, color 0.2s, transform 0.15s;
+  }
+  .run-btn:hover { background: var(--accent); color: #fff; transform: translateY(-1px); }
+  .run-btn:active { transform: translateY(0); }
+
+  .pred-result {
+    margin-top: 1.25rem; background: var(--surface2);
+    border: 1px solid rgba(108,99,255,0.3);
+    border-radius: 12px; padding: 1.25rem 1.5rem;
+    display: none; justify-content: space-between; align-items: center;
+    animation: fadeUp 0.3s ease;
+  }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .pred-result-label { font-size: 11px; color: var(--muted); font-family: var(--mono); letter-spacing: 0.06em; margin-bottom: 4px; }
+  .pred-result-value { font-size: 30px; font-weight: 800; color: var(--accent3); font-family: var(--mono); }
+
+  /* Steps */
+  .steps { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 2.5rem; }
+  .step {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 1rem;
+    display: flex; flex-direction: column; gap: 8px;
+    transition: border-color 0.2s;
+  }
+  .step:hover { border-color: rgba(108,99,255,0.25); }
+  .step-num { font-family: var(--mono); font-size: 10px; color: var(--accent); letter-spacing: 0.1em; }
+  .step-text { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+  /* footer */
+  .footer { margin-top: 3rem; text-align: center; font-family: var(--mono); font-size: 11px; color: #333350; }
+
+  /* Canvas */
+  canvas { display: block; }
+
+  @media (max-width: 760px) {
+    .metric-grid { grid-template-columns: repeat(3,1fr); }
+    .two-col, .three-col { grid-template-columns: 1fr; }
+    .steps { grid-template-columns: 1fr 1fr; }
+    h1 { font-size: 26px; }
+    .header { flex-direction: column; gap: 1rem; }
+    .header-badge { align-items: flex-start; flex-direction: row; flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-blobs">
+  <div class="blob blob1"></div>
+  <div class="blob blob2"></div>
+  <div class="blob blob3"></div>
+</div>
+
+<div class="page">
+
+  <!-- Header -->
+  <div class="header">
+    <div>
+      <div class="brand">
+        <div class="brand-logo">S</div>
+        <div>
+          <div class="brand-name">SyntecxHub</div>
+          <div class="brand-tagline">CREATE · THINK · SOLVE</div>
+        </div>
+      </div>
+      <h1>House Price <span>Prediction</span></h1>
+      <p class="subtitle">Project — 01 · Linear Regression · California Housing Dataset</p>
+    </div>
+    <div class="header-badge">
+      <span class="badge badge-green">R² = 0.908</span>
+      <span class="badge badge-purple">StandardScaler</span>
+      <span class="badge badge-pink">80 / 20 Split</span>
+    </div>
+  </div>
+
+  <!-- Pipeline Steps -->
+  <div class="section-label">Project pipeline</div>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">STEP 01</div>
+      <div style="font-size:13px; font-weight:700; margin-bottom:2px;">Load & Clean</div>
+      <div class="step-text">Load housing dataset, explore features and handle missing values.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">STEP 02</div>
+      <div style="font-size:13px; font-weight:700; margin-bottom:2px;">Feature Select</div>
+      <div class="step-text">Select features, apply StandardScaler, split train/test sets.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">STEP 03</div>
+      <div style="font-size:13px; font-weight:700; margin-bottom:2px;">Train Model</div>
+      <div class="step-text">Train Linear Regression model. Evaluate RMSE and R².</div>
+    </div>
+    <div class="step">
+      <div class="step-num">STEP 04</div>
+      <div style="font-size:13px; font-weight:700; margin-bottom:2px;">Save & Predict</div>
+      <div class="step-text">Save model weights, interpret coefficients and run predictions.</div>
+    </div>
+  </div>
+
+  <!-- Metrics -->
+  <div class="section-label">Model performance</div>
+  <div class="metric-grid">
+    <div class="metric-card">
+      <div class="metric-label">Dataset</div>
+      <div class="metric-value val-white">2,000</div>
+      <div class="metric-sub">records total</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Features</div>
+      <div class="metric-value val-white">8</div>
+      <div class="metric-sub">after cleaning</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Missing</div>
+      <div class="metric-value val-white">0</div>
+      <div class="metric-sub">clean dataset</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">R² Score</div>
+      <div class="metric-value val-green">0.908</div>
+      <div class="metric-sub">variance explained</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">RMSE</div>
+      <div class="metric-value" style="color:var(--accent2);">$42k</div>
+      <div class="metric-sub">root mean sq. err</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Avg Price</div>
+      <div class="metric-value" style="color:var(--accent);">$335k</div>
+      <div class="metric-sub">dataset mean</div>
+    </div>
+  </div>
+
+  <!-- Scatter + Residuals -->
+  <div class="section-label">Visual diagnostics</div>
+  <div class="two-col" style="margin-bottom:2rem;">
+    <div class="card">
+      <div style="font-size:12px; font-weight:700; margin-bottom:1rem; color:var(--muted); font-family:var(--mono); letter-spacing:0.06em;">PREDICTED vs ACTUAL</div>
+      <div style="position:relative; height:260px;">
+        <canvas id="scatterChart"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div style="font-size:12px; font-weight:700; margin-bottom:1rem; color:var(--muted); font-family:var(--mono); letter-spacing:0.06em;">RESIDUAL DISTRIBUTION</div>
+      <div style="position:relative; height:260px;">
+        <canvas id="residualChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Coefficients + Example + Prediction -->
+  <div class="section-label">Coefficients · example · predictor</div>
+  <div class="three-col">
+
+    <!-- Coefficients -->
+    <div class="card">
+      <div style="font-size:12px; font-weight:700; margin-bottom:1rem; color:var(--muted); font-family:var(--mono); letter-spacing:0.06em;">FEATURE COEFFICIENTS</div>
+      <div id="coef-container"></div>
+    </div>
+
+    <!-- Example from test set -->
+    <div class="card">
+      <div style="font-size:12px; font-weight:700; margin-bottom:1rem; color:var(--muted); font-family:var(--mono); letter-spacing:0.06em;">TEST SAMPLE</div>
+      <table class="feat-tbl" id="example-features"></table>
+      <div class="stat-trio">
+        <div class="stat-box">
+          <div class="stat-box-label">PREDICTED</div>
+          <div class="stat-box-val" id="ex-pred" style="color:var(--accent3);"></div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-box-label">ACTUAL</div>
+          <div class="stat-box-val" id="ex-actual" style="color:var(--text);"></div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-box-label">ERROR</div>
+          <div class="stat-box-val" id="ex-error"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Custom Prediction -->
+    <div class="card" style="display:flex; flex-direction:column;">
+      <div style="font-size:12px; font-weight:700; margin-bottom:1rem; color:var(--muted); font-family:var(--mono); letter-spacing:0.06em;">CUSTOM PREDICTOR</div>
+      <div class="pred-grid" id="pred-inputs"></div>
+      <button class="run-btn" onclick="runPrediction()">→ PREDICT PRICE</button>
+      <div class="pred-result" id="pred-result">
+        <div>
+          <div class="pred-result-label">ESTIMATED PRICE</div>
+          <div class="pred-result-value" id="pred-value"></div>
+        </div>
+        <span class="badge badge-purple">LinReg</span>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footer">SyntecxHub · Project 01 · House Price Prediction · Linear Regression Dashboard</div>
+</div>
+
+<script>
+  // ── Data ──────────────────────────────────────────────────────────────────
+  const coefficients = [
+    {Feature:"MedInc",   Coefficient:121443.14},
+    {Feature:"AveRooms", Coefficient:12624.77},
+    {Feature:"Latitude", Coefficient:-6666.47},
+    {Feature:"HouseAge", Coefficient:5802.44},
+    {Feature:"Population",Coefficient:-5085.68},
+    {Feature:"Longitude",Coefficient:3529.05},
+    {Feature:"AveOccup", Coefficient:-2446.0},
+    {Feature:"AveBedrms",Coefficient:-1613.42}
+  ];
+
+  const samplePreds = [
+    {predicted:279349,actual:313660},{predicted:247172,actual:233732},{predicted:559741,actual:653733},
+    {predicted:315415,actual:287284},{predicted:208406,actual:238553},{predicted:271433,actual:287567},
+    {predicted:307336,actual:351940},{predicted:247765,actual:213859},{predicted:507406,actual:514276},
+    {predicted:338760,actual:313216},{predicted:240078,actual:268831},{predicted:283780,actual:318588},
+    {predicted:325943,actual:359193},{predicted:317427,actual:294217},{predicted:703569,actual:704234},
+    {predicted:353059,actual:359383},{predicted:308912,actual:332769},{predicted:305935,actual:292603},
+    {predicted:274436,actual:235995},{predicted:219773,actual:234706},{predicted:196095,actual:172889},
+    {predicted:464220,actual:501481},{predicted:209341,actual:181507},{predicted:658344,actual:710350},
+    {predicted:240671,actual:245449},{predicted:282960,actual:306813},{predicted:227713,actual:210173},
+    {predicted:301791,actual:304537},{predicted:336480,actual:392374},{predicted:284774,actual:302027},
+    {predicted:309568,actual:313907},{predicted:620357,actual:675959},{predicted:336969,actual:324043},
+    {predicted:394016,actual:403677},{predicted:287955,actual:246646},{predicted:281808,actual:258775}
+  ];
+
+  const exampleFeatures = {MedInc:4.135,HouseAge:20.489,AveRooms:4.737,AveBedrms:1.008,Population:578.92,AveOccup:1.949,Latitude:40.248,Longitude:-117.483};
+  const examplePred = 279349, exampleActual = 313660;
+
+  const featLabels = {MedInc:'MedInc',HouseAge:'HouseAge',AveRooms:'AveRooms',AveBedrms:'AveBedrms',Population:'Population',AveOccup:'AveOccup',Latitude:'Latitude',Longitude:'Longitude'};
+  const fmt = v => '$' + Math.round(v).toLocaleString();
+
+  // ── Coefficients ──────────────────────────────────────────────────────────
+  const maxAbs = Math.max(...coefficients.map(c => Math.abs(c.Coefficient)));
+  const coefContainer = document.getElementById('coef-container');
+  coefficients.forEach(c => {
+    const pct = (Math.abs(c.Coefficient) / maxAbs * 100).toFixed(1);
+    const color = c.Coefficient > 0 ? 'var(--accent3)' : 'var(--accent2)';
+    const sign = c.Coefficient > 0 ? '+' : '−';
+    coefContainer.innerHTML += `<div class="coef-row">
+      <div class="coef-name">${c.Feature}</div>
+      <div class="coef-bar-wrap"><div class="coef-bar" style="width:${pct}%;background:${color};"></div></div>
+      <div class="coef-val">${sign}$${Math.round(Math.abs(c.Coefficient)/1000).toLocaleString()}k</div>
+    </div>`;
+  });
+
+  // ── Example table ─────────────────────────────────────────────────────────
+  const exFeat = document.getElementById('example-features');
+  Object.entries(exampleFeatures).forEach(([k,v]) => {
+    exFeat.innerHTML += `<tr><td>${k}</td><td>${v}</td></tr>`;
+  });
+  document.getElementById('ex-pred').textContent = fmt(examplePred);
+  document.getElementById('ex-actual').textContent = fmt(exampleActual);
+  const err = examplePred - exampleActual;
+  const errEl = document.getElementById('ex-error');
+  errEl.textContent = (err > 0 ? '+' : '') + fmt(Math.abs(err));
+  errEl.style.color = Math.abs(err) < 40000 ? 'var(--accent3)' : 'var(--accent2)';
+
+  // ── Prediction inputs ─────────────────────────────────────────────────────
+  const defaults = {MedInc:5.5,HouseAge:25,AveRooms:5.4,AveBedrms:1.1,Population:900,AveOccup:2.6,Latitude:37.2,Longitude:-119.1};
+  const predInputs = document.getElementById('pred-inputs');
+  Object.entries(defaults).forEach(([k,v]) => {
+    predInputs.innerHTML += `<div class="pred-field"><label>${k}</label><input type="number" id="inp-${k}" value="${v}" step="0.1"></div>`;
+  });
+
+  const means = {MedInc:5.497,HouseAge:26.033,AveRooms:5.349,AveBedrms:1.094,Population:928.89,AveOccup:2.623,Latitude:37.235,Longitude:-119.147};
+  const stds  = {MedInc:3.628,HouseAge:14.634,AveRooms:1.465,AveBedrms:0.207,Population:861.939,AveOccup:1.034,Latitude:2.732,Longitude:2.834};
+  const coefs = {MedInc:121443.14,HouseAge:5802.44,AveRooms:12624.77,AveBedrms:-1613.42,Population:-5085.68,AveOccup:-2446.0,Latitude:-6666.47,Longitude:3529.05};
+  const intercept = 335181;
+
+  function runPrediction() {
+    let pred = intercept;
+    Object.keys(defaults).forEach(f => {
+      const raw = parseFloat(document.getElementById('inp-'+f).value) || means[f];
+      pred += ((raw - means[f]) / stds[f]) * coefs[f];
+    });
+    pred = Math.max(50000, Math.min(900000, pred));
+    document.getElementById('pred-value').textContent = fmt(pred);
+    document.getElementById('pred-result').style.display = 'flex';
+  }
+
+  // ── Chart defaults ────────────────────────────────────────────────────────
+  Chart.defaults.color = '#7070a0';
+  Chart.defaults.font.family = "'Space Mono', monospace";
+  Chart.defaults.font.size = 10;
+
+  // ── Scatter chart ─────────────────────────────────────────────────────────
+  new Chart(document.getElementById('scatterChart'), {
+    type: 'scatter',
+    data: {
+      datasets: [
+        {
+          label: 'Predictions',
+          data: samplePreds.map(p => ({x: p.actual, y: p.predicted})),
+          backgroundColor: 'rgba(108,99,255,0.5)',
+          pointRadius: 5, pointHoverRadius: 7
+        },
+        {
+          label: 'Perfect fit',
+          data: [{x:100000,y:100000},{x:800000,y:800000}],
+          type: 'line',
+          borderColor: 'rgba(0,212,170,0.4)',
+          borderDash: [5,4], borderWidth: 1.5,
+          pointRadius: 0, fill: false
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          title: { display: true, text: 'Actual Price', color: '#7070a0' },
+          ticks: { callback: v => '$'+(v/1000).toFixed(0)+'k' }
+        },
+        y: {
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          title: { display: true, text: 'Predicted Price', color: '#7070a0' },
+          ticks: { callback: v => '$'+(v/1000).toFixed(0)+'k' }
+        }
+      }
+    }
+  });
+
+  // ── Residual histogram ────────────────────────────────────────────────────
+  const residuals = samplePreds.map(p => Math.round((p.predicted - p.actual) / 1000));
+  const binSize = 25, binMin = -175, binMax = 175;
+  const binLabels = [], binCounts = [];
+  for (let b = binMin; b <= binMax; b += binSize) {
+    binLabels.push((b >= 0 ? '+' : '') + b);
+    binCounts.push(residuals.filter(r => r >= b && r < b + binSize).length);
+  }
+  new Chart(document.getElementById('residualChart'), {
+    type: 'bar',
+    data: {
+      labels: binLabels,
+      datasets: [{ label: 'Count', data: binCounts, backgroundColor: 'rgba(255,107,157,0.6)', borderRadius: 4, barPercentage: 0.8 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: {
+          grid: { display: false },
+          title: { display: true, text: 'Residual ($k)', color: '#7070a0' },
+          ticks: { maxRotation: 45, autoSkip: false }
+        },
+        y: {
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          title: { display: true, text: 'Count', color: '#7070a0' }
+        }
+      }
+    }
+  });
+</script>
+</body>
+</html>
